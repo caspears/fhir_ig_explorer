@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Ask the IG</title>
+  <style>
+    .result-card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      background: #f9f9f9;
+    }
+
+    .result-card h3 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Ask the NHSN dQM IG</h1>
+
+  <textarea id="question" rows="4" cols="80"></textarea>
+
+  <br><br>
+
+  <button onclick="askIg()">
+    Ask
+  </button>
+
+  <pre id="answer"></pre>
+
+  <script>
+
+    async function askIg() {
+
+      const question =
+        document.getElementById("question").value;
+
+      const response = await fetch(
+        "/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: question
+          })
+        }
+      );
+      /*
+      What elements are required for NHSN ACH Daily Encounter?
+    
+      const response = await fetch(
+        "http://127.0.0.1:8000/ask",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: question
+          })
+        }
+      );*/
+
+      const data = await response.json();
+
+      /*document.getElementById("answer")
+        .textContent =
+          JSON.stringify(data, null, 2);*/
+
+      const answerDiv = document.getElementById("answer");
+      answerDiv.innerHTML = "";
+
+      /////////////////////
+      //  Before LLM 
+  //     data.sources.forEach((source, index) => {
+  //       const meta = source.metadata || {};
+
+  //       const card = document.createElement("div");
+  //       card.className = "result-card";
+
+  //       card.innerHTML = `
+  //   <h3>${index + 1}. ${meta.title || meta.profileName || meta.sourceType || "IG Source"}</h3>
+  //   <p><strong>Type:</strong> ${meta.sourceType || ""}</p>
+  //   ${meta.elementPath ? `<p><strong>Element:</strong> ${meta.elementPath}</p>` : ""}
+  //   ${meta.bindingStrength ? `<p><strong>Binding:</strong> ${meta.bindingStrength}</p>` : ""}
+  //   ${meta.valueSet ? `<p><strong>ValueSet:</strong> <a href="${meta.valueSet}" target="_blank">${meta.valueSet}</a></p>` : ""}
+  //   <p>${source.text.substring(0, 800)}...</p>
+  // `;
+
+  //       answerDiv.appendChild(card);
+  //     });
+  /////////////////////
+  //  After LLM 
+    document.getElementById("answer").innerHTML = `
+    <div class="answer-card">
+      <h2>Answer</h2>
+      <p>${data.answer.replace(/\n/g, "<br>")}</p>
+    </div>
+  `;
+
+    }
+
+  </script>
+
+</body>
+
+</html>

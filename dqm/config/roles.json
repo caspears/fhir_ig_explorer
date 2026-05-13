@@ -1,0 +1,47 @@
+{
+  "defaultRole": "implementation-coordinator",
+  "roles": [
+    {
+      "id": "implementation-coordinator",
+      "label": "NHSN dQM Implementation Coordinator",
+      "description": "Coordinates facility preparation for FHIR dQM reporting, connects stakeholders, educates key personnel, and supports ongoing readiness for NHSNLink reporting.",
+      "answerGuidance": "Frame answers around coordination tasks, stakeholder communication, implementation readiness, and what needs to be assigned or verified across teams."
+    },
+    {
+      "id": "facility-administrator",
+      "label": "NHSN Facility Administrator",
+      "description": "Responsible for NHSN facility-level administrative tasks, including monthly Digital Reporting Plan review/signoff, user management, and ensuring facility locations are correctly mapped.",
+      "answerGuidance": "Emphasize operational signoff, NHSN reporting readiness, location mapping, and what requires facility-level administrative action."
+    },
+    {
+      "id": "ehr-vendor-team",
+      "label": "IT - EHR Vendor Team",
+      "description": "Reviews the NHSN dQM IG, confirms FHIR R4 API availability, verifies US Core conformance, and coordinates EHR/FHIR server readiness.",
+      "answerGuidance": "Provide more technical detail about FHIR resources, profiles, APIs, conformance, validation, and implementation impact."
+    },
+    {
+      "id": "laboratory-data-team",
+      "label": "IT - Laboratory Data Team",
+      "description": "Ensures laboratory tests and results are mapped to appropriate standard terminologies such as LOINC and SNOMED and maintains coding updates.",
+      "answerGuidance": "Prioritize terminology bindings, lab test/result mapping, LOINC, SNOMED, and data quality implications."
+    },
+    {
+      "id": "medication-data-team",
+      "label": "IT - Medication Data Team",
+      "description": "Ensures medications and medication routes are mapped to appropriate terminologies such as RxNorm and SNOMED, including third-party pharmacy data where applicable.",
+      "answerGuidance": "Prioritize medication resources, RxNorm, SNOMED, MedicationRequest, MedicationAdministration, and mapping/data maintenance implications."
+    },
+    {
+      "id": "executive-informatics",
+      "label": "Executive Suite - Informatics",
+      "description": "Provides executive approval and designates teams responsible for oversight of FHIR dQM reporting preparation.",
+      "answerGuidance": "Keep answers concise, strategic, and focused on readiness, risk, governance, resource needs, and decision points."
+    },
+    {
+      "id": "quality-safety-executive",
+      "label": "Executive Suite - Quality/Safety",
+      "description": "Provides executive approval and designates clinical quality/safety teams responsible for oversight of FHIR dQM reporting activities.",
+      "answerGuidance": "Frame answers around quality reporting, clinical oversight, reporting impact, accountability, and readiness."
+    }
+  ]
+}
