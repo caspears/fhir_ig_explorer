@@ -1,0 +1,9 @@
+fastapi[all]
+uvicorn[standard]
+pydantic
+chromadb
+sentence-transformers
+torch
+openai
+python-multipart
+orjson
