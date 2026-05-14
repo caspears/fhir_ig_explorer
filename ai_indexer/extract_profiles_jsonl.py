@@ -201,6 +201,10 @@ def extract_profile_rows(path: Path, resource: Dict[str, Any], ig_context: Dict[
             }, resource, ig_context)
 
 
+            # only create constraint rows for differential constraints
+            if section_name != "differential":
+                continue
+
             constraints = (
                 element.get("constraint")
                 if isinstance(element.get("constraint"), list)
@@ -217,6 +221,22 @@ def extract_profile_rows(path: Path, resource: Dict[str, Any], ig_context: Dict[
                 expression = constraint.get("expression")
                 xpath = constraint.get("xpath")
                 source = constraint.get("source")
+
+                SKIP_CONSTRAINT_KEYS = {
+                    "ele-1",
+                    "ext-1",
+                    "dom-2",
+                    "dom-3",
+                    "dom-4",
+                    "dom-5",
+                    "dom-6",
+                }
+
+                if constraint_key in SKIP_CONSTRAINT_KEYS:
+                    continue
+
+                if not human and not expression:
+                    continue
 
                 constraint_text = clean_text(
                     "\n".join([
