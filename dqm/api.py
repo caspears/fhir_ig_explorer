@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
+#from sentence_transformers import SentenceTransformer
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import chromadb
@@ -63,9 +63,9 @@ def home():
 # Load embedding model
 # ---------------------------------------
 
-model = SentenceTransformer(
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
+# model = SentenceTransformer(
+#     "sentence-transformers/all-MiniLM-L6-v2"
+# )
 
 # ---------------------------------------
 # Open Chroma DB
@@ -124,9 +124,11 @@ def ask(req: AskRequest):
     # -----------------------------------
 
     # Convert question into vector
-    embedding = model.encode(
-        [req.question]
-    ).tolist()[0]
+    # embedding = model.encode(
+    #     [req.question]
+    # ).tolist()[0]
+
+    embedding = get_query_embedding(req.question)
 
     # -----------------------------------
     # Build Chroma where filter
@@ -812,7 +814,14 @@ Retrieved IG excerpts:
     return response.output_text
 
 
-    
+def get_query_embedding(text: str) -> list[float]:
+    response = openai_client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    )
+
+    return response.data[0].embedding
+
 
 def linkify_answer_text(text: str, artifact_lookup: dict) -> str:
     """

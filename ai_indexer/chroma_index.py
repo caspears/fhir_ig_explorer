@@ -1,6 +1,12 @@
 from sentence_transformers import SentenceTransformer
 import chromadb
 import json
+from openai import OpenAI
+import os
+
+openai_client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY")
+)
 
 def clean_metadata(row):
     metadata = {}
@@ -23,6 +29,16 @@ def clean_metadata(row):
 
     return metadata
 
+def get_embeddings(texts: list[str]) -> list[list[float]]:
+    response = openai_client.embeddings.create(
+        model="text-embedding-3-small",
+        input=texts
+    )
+
+    return [
+        item.embedding
+        for item in response.data
+    ]
 
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
@@ -49,6 +65,7 @@ for start in range(0, len(rows), BATCH_SIZE):
     batch_ids = [str(r["id"]) for r in batch_rows]
     batch_metadatas = [clean_metadata(r) for r in batch_rows]
     batch_embeddings = model.encode(batch_documents).tolist()
+    embeddings = get_embeddings(batch_documents)
 
     collection.upsert(
         ids=batch_ids,

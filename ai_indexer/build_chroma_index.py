@@ -14,10 +14,15 @@ import argparse
 import json
 from pathlib import Path
 from typing import Dict, Iterable, List
+from openai import OpenAI
+import os
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+openai_client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY")
+)
 
 def read_jsonl(paths: List[Path]) -> List[Dict]:
     rows = []
@@ -107,6 +112,18 @@ def deduplicate_rows(rows):
 
     return deduped
 
+def get_embeddings(texts: list[str]) -> list[list[float]]:
+    response = openai_client.embeddings.create(
+        model="text-embedding-3-small",
+        input=texts
+    )
+
+    return [
+        item.embedding
+        for item in response.data
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", nargs="+", required=True, help="JSONL files")
@@ -138,7 +155,8 @@ def main() -> None:
         ids = [str(r["id"]) for r in batch]
         docs = [r["text"] for r in batch]
         metas = [metadata_for(r) for r in batch]
-        embeddings = model.encode(docs, show_progress_bar=False).tolist()
+        #embeddings = model.encode(docs, show_progress_bar=False).tolist()
+        embeddings = get_embeddings(docs)
 
         # Use upsert so repeated indexing updates the collection.
         collection.upsert(
