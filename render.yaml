@@ -1,9 +1,10 @@
 services:
   # A Docker web service
   - type: web
-    name: fastapi-example
+    name: fhir-ig-explorer
+    rootDir: dqm
     runtime: python
     plan: free
     autoDeploy: false
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn dqm.api:app --host 0.0.0.0 --port $PORT
