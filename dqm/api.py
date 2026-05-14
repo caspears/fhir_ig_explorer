@@ -10,6 +10,14 @@ import os
 from html import escape
 import json
 from pathlib import Path
+from datetime import datetime, timezone
+import time
+import base64
+
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+_google_sheets_service = None
 
 openai_client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY")
@@ -95,6 +103,9 @@ class AskRequest(BaseModel):
 def ask(req: AskRequest):
 
     where_filter = None
+    
+
+    start_time = time.time()
 
     # if element_path:
     #     where_filter = {
@@ -235,6 +246,18 @@ def ask(req: AskRequest):
     )
 
     answer_html = linkify_answer_text(answer, artifact_lookup)
+
+
+    response_ms = int((time.time() - start_time) * 1000)
+
+    log_qa_to_google_sheet(
+        question=req.question,
+        answer=answer,
+        detected=detected_info,
+        role=role_context,
+        sources=sources,
+        response_ms=response_ms,
+    )
 
     return {
         "question": req.question,
@@ -821,6 +844,138 @@ def get_query_embedding(text: str) -> list[float]:
     )
 
     return response.data[0].embedding
+
+#################################################
+# Google Sheets logging
+#################################################
+
+def get_google_sheets_service():
+    global _google_sheets_service
+
+    if _google_sheets_service is not None:
+        return _google_sheets_service
+
+    raw_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    
+    # If json key in environment variable
+    if raw_json:
+        service_account_info = json.loads(raw_json)
+    else:
+        # If json key not in environment variable, try looking for a file
+        service_account_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+        print(service_account_file)
+
+        if service_account_file:
+            credentials = service_account.Credentials.from_service_account_file(
+                service_account_file,
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+        else:
+            raw_b64 = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_B64")
+
+            if not raw_b64:
+                print("Google Sheets logging disabled: no credentials configured")
+                return None
+            
+            service_account_info = json.loads(
+                base64.b64decode(raw_b64).decode("utf-8")
+            )
+
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info,
+                scopes=["https://www.googleapis.com/auth/spreadsheets"]
+            )
+
+    _google_sheets_service = build(
+        "sheets",
+        "v4",
+        credentials=credentials
+    )
+
+    return _google_sheets_service
+
+def summarize_sources_for_log(sources):
+    summarized = []
+
+    for source in sources or []:
+        meta = source.get("metadata", {})
+
+        summarized.append({
+            "title": (
+                meta.get("title")
+                or meta.get("profileName")
+                or meta.get("libraryTitle")
+                or meta.get("libraryName")
+            ),
+            "sourceType": meta.get("sourceType"),
+            "artifactUrl": (
+                meta.get("artifactUrl")
+                or meta.get("libraryArtifactUrl")
+                or meta.get("pageUrl")
+            ),
+            "elementPath": meta.get("elementPath"),
+            "valueSet": meta.get("valueSet"),
+            "defineName": meta.get("defineName"),
+            "measureGroup": meta.get("measureGroup"),
+        })
+
+    return summarized
+
+
+def log_qa_to_google_sheet(
+    question,
+    answer,
+    detected=None,
+    role=None,
+    sources=None,
+    response_ms=None,
+):
+    try:
+        service = get_google_sheets_service()
+
+        if service is None:
+            print("Google Sheets logging disabled: missing GOOGLE_SERVICE_ACCOUNT_JSON")
+            return
+
+        spreadsheet_id = os.environ.get("GOOGLE_SHEET_ID")
+
+        if not spreadsheet_id:
+            print("Google Sheets logging disabled: missing GOOGLE_SHEET_ID")
+            return
+
+        role_label = None
+        role_id = None
+
+        if isinstance(role, dict):
+            role_id = role.get("id")
+            role_label = role.get("label")
+        else:
+            role_id = role
+
+        row = [
+            datetime.now(timezone.utc).isoformat(),
+            question,
+            role_id or "",
+            role_label or "",
+            answer,
+            json.dumps(detected or {}, ensure_ascii=False),
+            json.dumps(summarize_sources_for_log(sources), ensure_ascii=False),
+            response_ms or "",
+        ]
+
+        service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range="Logs!A:H",
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={
+                "values": [row]
+            }
+        ).execute()
+
+    except Exception as ex:
+        print("Google Sheets logging failed:", ex)
+
 
 
 def linkify_answer_text(text: str, artifact_lookup: dict) -> str:
