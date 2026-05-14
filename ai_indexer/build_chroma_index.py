@@ -74,7 +74,7 @@ def metadata_for(row: Dict) -> Dict:
         "constraintExpression",
         "constraintSource",
          # CQL metadata
-         "libraryResourceId",
+        "libraryResourceId",
         "libraryTitle",
         "libraryCanonical",
         "libraryArtifactUrl",
@@ -88,6 +88,10 @@ def metadata_for(row: Dict) -> Dict:
         "measureGroup",
         "program",
         "reportingFrequency",
+        #Resource center page metadata
+        "pageKey",
+        "pageCategory",
+        "audience",
     ]:
         value = row.get(key)
         if value is None:

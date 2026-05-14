@@ -4,6 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <title>Ask the NHSN dQM IG</title>
 
@@ -237,10 +239,11 @@
     <div id="sourcesContainer"></div>
 
     <div class="footer-note">
-      <b>Do not enter patient-specific, protected health information, or other sensitive data. Questions and generated responses may be logged for prototype evaluation.</b>
+      <p><b>⚠️ Do not enter patient-specific, protected health information, or other sensitive data. Questions and generated responses may be logged for prototype evaluation. ⚠️ </b><br/><b>Requests are Logged.</b></p>
 
-      This assistant provides guidance from the indexed IG artifacts and retrieved source excerpts.
-      Responses should be validated against the published implementation guide and formal conformance tooling.
+      
+      <p>This assistant provides guidance from the indexed IG artifacts and retrieved source excerpts.<br/>
+      Responses should be validated against the published implementation guide and formal conformance tooling.</p>
     </div>
 
   </div>
@@ -433,6 +436,16 @@
 
         </div>
       `;
+    }
+
+    function renderMarkdown(text) {
+      if (!text) {
+        return "";
+      }
+
+      return DOMPurify.sanitize(
+        marked.parse(text)
+      );
     }
 
     /* Before formatting with additional urls
@@ -678,6 +691,20 @@
                   ${escapeHtml(meta.bindingStrength)}
                 </div>
               ` : ""}
+
+              ${meta.pageCategory ? `
+                <div>
+                  <span class="small-label">Category:</span>
+                  ${escapeHtml(meta.pageCategory)}
+                </div>
+              ` : ""}
+
+              ${meta.audience ? `
+                <div>
+                  <span class="small-label">Audience:</span>
+                  ${escapeHtml(meta.audience)}
+                </div>
+              ` : ""}
               
               
               ${meta.valueSet ? `
@@ -721,8 +748,8 @@
 
             </div>
 
-            <div class="source-text">
-              ${escapeHtml(excerpt)}
+            <div class="source-text markdown-body">
+              ${renderMarkdown(excerpt)}
             </div>
 
           </div>

@@ -32,6 +32,9 @@ INDEX_DIR = BASE_DIR / "index" / "chroma"
 
 print(STATIC_DIR)
 
+
+
+
 # What data does the ACH Monthly measure logic extract?
 # What are the terminology bindings for Encounter.type in ACH Daily?
 
@@ -108,10 +111,6 @@ def ask(req: AskRequest):
 
     start_time = time.time()
 
-    # TODO Temporary logging
-    print("GOOGLE_SHEET_ID configured:", bool(os.environ.get("GOOGLE_SHEET_ID")))
-    print("GOOGLE_SERVICE_ACCOUNT_FILE configured:", bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")))
-    print("GOOGLE_SERVICE_ACCOUNT_JSON_B64 configured:", bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_B64")))
 
     # if element_path:
     #     where_filter = {
@@ -195,7 +194,7 @@ def ask(req: AskRequest):
 
     # Build response
     sources = build_sources(results)
-    sources = rerank_sources(req.question, sources)
+    sources = rerank_sources(req.question, sources, role_context=role_context)
     sources = dedupe_sources_by_artifact_and_element(sources)
     sources = sources[:8]
 
@@ -460,6 +459,35 @@ def is_constraint_question(question: str) -> bool:
         "must be true",
     ])
 
+def is_resource_center_question(question: str) -> bool:
+    q = question.lower()
+    return any(term in q for term in [
+        "onboarding",
+        "onboard",
+        "ready",
+        "readiness",
+        "prepare",
+        "preparation",
+        "role",
+        "responsibility",
+        "responsibilities",
+        "who should",
+        "who is responsible",
+        "facility administrator",
+        "implementation coordinator",
+        "reporting plan",
+        "getting started",
+        "resource center",
+    ])
+
+def source_matches_role(meta, role_context):
+    if not role_context:
+        return False
+
+    role_id = role_context.get("id")
+    audience = meta.get("audience") or ""
+
+    return role_id and role_id in audience
 
 def dedupe_sources_by_artifact_and_element(sources):
     """
@@ -568,7 +596,7 @@ def dedupe_sources_by_artifact_and_element(sources):
     return [item[1] for item in best.values()]
 
 
-def rerank_sources(question: str, sources: list[dict]) -> list[dict]:
+def rerank_sources(question: str, sources: list[dict], role_context = None) -> list[dict]:
     q = question.lower()
     profile_hints = detect_profile_hint(question)
     element_path = detect_element_path(question)
@@ -679,6 +707,13 @@ def rerank_sources(question: str, sources: list[dict]) -> list[dict]:
 
         #if element_path and meta.get("elementPath") == element_path:
         #    score += 100
+
+        if is_resource_center_question(question):
+            if meta.get("sourceType") == "ResourceCenterPage":
+                score += 100
+
+        if source_matches_role(meta, role_context):
+            score += 40
 
         # Light boost if text also contains the hints
         lower_text = text.lower()
@@ -969,10 +1004,6 @@ def get_google_sheets_service():
     else:
         # If json key not in environment variable, try looking for a file
         service_account_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
-        # TODO Temporary logging
-        print(service_account_file)
-        print("Credential file path:", service_account_file)
-        print("Credential file exists:", Path(service_account_file).exists() if service_account_file else False)
 
         if service_account_file:
             credentials = service_account.Credentials.from_service_account_file(
@@ -1084,8 +1115,7 @@ def log_qa_to_google_sheet(
 
     except Exception as ex:
         print("Google Sheets logging failed:", ex)
-        # TODO Temporary logging
-        traceback.print_exc()
+
 
 
 
