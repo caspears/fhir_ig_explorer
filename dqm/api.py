@@ -437,11 +437,34 @@ def detect_profile_metadata(question: str):
 
     return result
 
+def is_constraint_question(question: str) -> bool:
+    q = question.lower()
+
+    return any(term in q for term in [
+        "constraint",
+        "constraints",
+        "invariant",
+        "invariants",
+        "rule",
+        "rules",
+        "fhirpath",
+        "expression",
+        "validation rule",
+        "validation rules",
+        "must be true",
+    ])
+
+
 def dedupe_sources_by_artifact_and_element(sources):
     """
     Keeps the best source per artifact/profile + elementPath.
-    Prefer snapshot rows over differential rows because snapshot rows
-    contain the fully resolved effective constraint.
+
+    Element rows:
+      - Prefer snapshot rows over differential rows.
+
+    Constraint rows:
+      - Keep distinct constraints separately.
+      - Do not dedupe them away just because an element row exists.
     """
 
     best = {}
@@ -449,32 +472,81 @@ def dedupe_sources_by_artifact_and_element(sources):
     for source in sources:
         meta = source.get("metadata", {})
 
-        key = (
+        is_constraint = meta.get("isConstraint") in [
+            True,
+            "True",
+            "true",
+            "1",
+            1,
+        ]
+
+        artifact_key = (
             meta.get("url")
             or meta.get("artifactUrl")
             or meta.get("profileName")
-            or meta.get("title"),
-            meta.get("elementPath"),
+            or meta.get("title")
         )
+
+        if is_constraint:
+            key = (
+                artifact_key,
+                meta.get("elementPath"),
+                meta.get("constraintKey"),
+                meta.get("constraintExpression"),
+            )
+        else:
+            key = (
+                artifact_key,
+                meta.get("elementPath"),
+            )
 
         chunk_type = meta.get("chunkType") or ""
 
         priority = 0
 
-        if chunk_type == "snapshot-element":
-            priority += 100
+        # -------------------------------
+        # Constraint rows
+        # -------------------------------
 
-        if chunk_type == "differential-element":
-            priority += 50
+        if is_constraint:
+            priority += 200
 
-        if meta.get("bindingStrength"):
-            priority += 25
+            if meta.get("constraintHuman"):
+                priority += 50
 
-        if meta.get("valueSet"):
-            priority += 25
+            if meta.get("constraintExpression"):
+                priority += 50
 
-        if meta.get("mustSupport") in [True, "True", "true"]:
-            priority += 10
+            # Differential constraints are often the authored IG constraints.
+            if chunk_type == "differential-constraint":
+                priority += 40
+
+            # Snapshot constraints are effective constraints.
+            if chunk_type == "snapshot-constraint":
+                priority += 25
+
+        # -------------------------------
+        # Element rows
+        # -------------------------------
+
+        else:
+            if chunk_type == "snapshot-element":
+                priority += 100
+
+            if chunk_type == "differential-element":
+                priority += 50
+
+            if meta.get("bindingStrength"):
+                priority += 25
+
+            if meta.get("valueSet"):
+                priority += 25
+
+            if meta.get("mustSupport") in [True, "True", "true", "1", 1]:
+                priority += 10
+
+            if meta.get("effectiveConstraint") in [True, "True", "true", "1", 1]:
+                priority += 20
 
         existing = best.get(key)
 
@@ -488,6 +560,7 @@ def dedupe_sources_by_artifact_and_element(sources):
             best[key] = (priority, source)
 
     return [item[1] for item in best.values()]
+    
 
 def rerank_sources(question: str, sources: list[dict]) -> list[dict]:
     q = question.lower()
@@ -573,6 +646,33 @@ def rerank_sources(question: str, sources: list[dict]) -> list[dict]:
 
             if "monthly" in q and meta.get("reportingFrequency") == "daily":
                 score -= 100
+
+
+        if is_constraint_question(question):
+            if meta.get("isConstraint") in [True, "True", "true"]:
+                score += 150
+
+            if meta.get("constraintExpression"):
+                score += 50
+
+            if meta.get("constraintHuman"):
+                score += 50
+
+            # Differential constraints are often the authored constraints in the IG.
+            if meta.get("chunkType") == "differential-constraint":
+                score += 40
+
+            # Snapshot constraints are still valid effective constraints.
+            if meta.get("chunkType") == "snapshot-constraint":
+                score += 25
+
+            domain = detect_profile_metadata(question).get("domain")
+
+            if domain and meta.get("elementPath") == domain:
+                score += 80
+
+        #if element_path and meta.get("elementPath") == element_path:
+        #    score += 100
 
         # Light boost if text also contains the hints
         lower_text = text.lower()

@@ -67,6 +67,12 @@ def metadata_for(row: Dict) -> Dict:
         "igBaseUrl",
         "artifactUrl",
         "effectiveConstraint",
+        "isConstraint",
+        "constraintKey",
+        "constraintSeverity",
+        "constraintHuman",
+        "constraintExpression",
+        "constraintSource",
          # CQL metadata
          "libraryResourceId",
         "libraryTitle",

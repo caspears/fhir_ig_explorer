@@ -162,6 +162,7 @@ def extract_profile_rows(path: Path, resource: Dict[str, Any], ig_context: Dict[
             element_id = element.get("id")
             element_path = element.get("path")
             text = element_text(str(title), str(url), element)
+            
 
             yield add_common_ig_metadata({
                 "id": stable_id("profile-element", url or path.name, section_name, element_id or element_path),
@@ -198,6 +199,89 @@ def extract_profile_rows(path: Path, resource: Dict[str, Any], ig_context: Dict[
                 "definition": element.get("definition"),
                 "text": text,
             }, resource, ig_context)
+
+
+            constraints = (
+                element.get("constraint")
+                if isinstance(element.get("constraint"), list)
+                else []
+            )
+
+            for constraint_index, constraint in enumerate(constraints):
+                if not isinstance(constraint, dict):
+                    continue
+
+                constraint_key = constraint.get("key")
+                severity = constraint.get("severity")
+                human = constraint.get("human")
+                expression = constraint.get("expression")
+                xpath = constraint.get("xpath")
+                source = constraint.get("source")
+
+                constraint_text = clean_text(
+                    "\n".join([
+                        f"Profile: {title}",
+                        f"Profile canonical: {url}",
+                        f"Resource type: {type_}",
+                        f"Element: {element_path}",
+                        f"Element id: {element_id}",
+                        f"Constraint key: {constraint_key}",
+                        f"Severity: {severity}",
+                        f"Human description: {human}",
+                        f"FHIRPath expression: {expression}",
+                        f"XPath: {xpath}",
+                        f"Source: {source}",
+                    ])
+                )
+
+                yield add_common_ig_metadata({
+                    "id": stable_id(
+                        "profile-constraint",
+                        url or path.name,
+                        section_name,
+                        element_id or element_path,
+                        constraint_key or constraint_index,
+                        constraint_index
+                    ),
+
+                    "sourceType": "StructureDefinition",
+                    "chunkType": f"{section_name}-constraint",
+
+                    # useful for ranking/filtering
+                    "isConstraint": True,
+                    "effectiveConstraint": section_name == "snapshot",
+
+                    "file": str(path),
+                    "url": url,
+                    "version": version,
+                    "name": name,
+                    "title": title,
+                    "profileName": title,
+
+                    "profileNameNormalized": derived["profileNameNormalized"],
+                    "program": derived["program"],
+                    "reportingFrequency": derived["reportingFrequency"],
+                    "domain": derived["domain"],
+
+                    "resourceType": "StructureDefinition",
+                    "fhirType": type_,
+                    "kind": kind,
+                    "derivation": derivation,
+                    "baseDefinition": base,
+
+                    "section": section_name,
+                    "elementId": element_id,
+                    "elementPath": element_path,
+
+                    "constraintKey": constraint_key,
+                    "constraintSeverity": severity,
+                    "constraintHuman": human,
+                    "constraintExpression": expression,
+                    "constraintSource": source,
+
+                    "text": constraint_text,
+
+                }, resource, ig_context)
 
 
 def main() -> None:
