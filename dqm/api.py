@@ -13,6 +13,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 import time
 import base64
+import traceback
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -106,6 +107,11 @@ def ask(req: AskRequest):
     
 
     start_time = time.time()
+
+    # TODO Temporary logging
+    print("GOOGLE_SHEET_ID configured:", bool(os.environ.get("GOOGLE_SHEET_ID")))
+    print("GOOGLE_SERVICE_ACCOUNT_FILE configured:", bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")))
+    print("GOOGLE_SERVICE_ACCOUNT_JSON_B64 configured:", bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_B64")))
 
     # if element_path:
     #     where_filter = {
@@ -560,7 +566,7 @@ def dedupe_sources_by_artifact_and_element(sources):
             best[key] = (priority, source)
 
     return [item[1] for item in best.values()]
-    
+
 
 def rerank_sources(question: str, sources: list[dict]) -> list[dict]:
     q = question.lower()
@@ -963,7 +969,10 @@ def get_google_sheets_service():
     else:
         # If json key not in environment variable, try looking for a file
         service_account_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+        # TODO Temporary logging
         print(service_account_file)
+        print("Credential file path:", service_account_file)
+        print("Credential file exists:", Path(service_account_file).exists() if service_account_file else False)
 
         if service_account_file:
             credentials = service_account.Credentials.from_service_account_file(
@@ -1075,6 +1084,8 @@ def log_qa_to_google_sheet(
 
     except Exception as ex:
         print("Google Sheets logging failed:", ex)
+        # TODO Temporary logging
+        traceback.print_exc()
 
 
 
